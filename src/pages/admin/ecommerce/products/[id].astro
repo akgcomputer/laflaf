@@ -251,7 +251,7 @@ const isImg = (content: string) => content && (content.startsWith('http') || con
       </div>
     )}
 
-    <form method="POST" id="productForm" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <form method="POST" id="productForm" data-astro-reload class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <input type="hidden" name="action" value="update_product" />
       
       <div class="lg:col-span-2 space-y-6">
@@ -492,7 +492,7 @@ const isImg = (content: string) => content && (content.startsWith('http') || con
                   <div class="font-bold text-sm text-gray-900 dark:text-white">{v.name}</div>
                   <div class="text-xs text-gray-500">Stok: {v.stock} | Fiyat: {v.price} {product.currency || '₺'}</div>
                 </div>
-                <form method="POST" class="inline">
+                <form method="POST" data-astro-reload class="inline">
                   <input type="hidden" name="action" value="delete_variant" />
                   <input type="hidden" name="variant_id" value={v.id} />
                   <button type="submit" class="text-red-500 hover:text-red-700 p-2 bg-white dark:bg-gray-800 rounded shadow-sm border border-gray-200 dark:border-gray-700" onclick="return confirm('Emin misiniz?')"><i class="fas fa-trash"></i></button>
@@ -504,7 +504,7 @@ const isImg = (content: string) => content && (content.startsWith('http') || con
           <p class="text-sm text-gray-500 mb-4">Henüz varyasyon eklenmemiş.</p>
         )}
 
-        <form method="POST" class="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-700 mt-4 space-y-4">
+        <form method="POST" data-astro-reload class="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-700 mt-4 space-y-4">
           <input type="hidden" name="action" value="add_variant" />
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <input type="text" name="v_name" placeholder="Örn: Kırmızı - XL" required class="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-800 dark:text-white" />
@@ -542,7 +542,7 @@ const isImg = (content: string) => content && (content.startsWith('http') || con
                 <div class="flex-1 text-sm text-green-600 font-bold">
                   % {wp.discount_percentage} İndirim
                 </div>
-                <form method="POST" class="inline">
+                <form method="POST" data-astro-reload class="inline">
                   <input type="hidden" name="action" value="delete_wholesale" />
                   <input type="hidden" name="w_id" value={wp.id} />
                   <button type="submit" class="text-red-500 hover:text-red-700 p-1 bg-white dark:bg-gray-800 rounded shadow-sm border border-gray-200 dark:border-gray-700"><i class="fas fa-trash"></i></button>
@@ -554,7 +554,7 @@ const isImg = (content: string) => content && (content.startsWith('http') || con
           )}
         </div>
 
-        <form method="POST" class="bg-gray-50 dark:bg-gray-900 p-4 rounded border border-gray-200 dark:border-gray-700">
+        <form method="POST" data-astro-reload class="bg-gray-50 dark:bg-gray-900 p-4 rounded border border-gray-200 dark:border-gray-700">
           <input type="hidden" name="action" value="add_wholesale" />
           <h3 class="text-sm font-bold mb-3">Yeni Ekle</h3>
           <div class="flex flex-col gap-2">
