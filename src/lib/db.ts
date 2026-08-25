@@ -5,7 +5,9 @@
 // Her sayfa yüklemesinde DB'ye vurmayı önler. 23.595 sorgu/gün → ~100/gün
 let _settingsCache: any = null;
 let _settingsCacheTime = 0;
-const SETTINGS_CACHE_TTL = 5 * 60 * 1000; // 5 dakika (ms)
+const SETTINGS_CACHE_TTL = 60 * 60 * 1000; // 1 SAAT (önceki: 5 dakika)
+// Not: CF Workers serverless olduğu için farklı instance'lar kendi cache'lerini taşır.
+// 1 saatlik TTL, her instance'ın yaşamı boyunca çok daha az DB sorgusu yapmasını sağlar.
 
 
 export interface Post {
@@ -850,7 +852,7 @@ export async function deleteUser(id: number, db?: any): Promise<boolean> {
 
 // --- POSTS ---
 
-export async function getPosts(db?: any, authorId?: number): Promise<any[]> {
+export async function getPosts(db?: any, authorId?: number, limit = 100): Promise<any[]> {
   if (db) {
     let query = `
       SELECT p.*, c.name as categoryName, c.slug as categorySlug 
@@ -858,12 +860,13 @@ export async function getPosts(db?: any, authorId?: number): Promise<any[]> {
       LEFT JOIN categories c ON p.category_id = c.id 
       WHERE p.status = 'published'
     `;
-    const binds = [];
+    const binds: any[] = [];
     if (authorId) {
       query += ` AND p.author_id = ?`;
       binds.push(authorId);
     }
-    query += ` ORDER BY p.publishedAt DESC LIMIT 100`;
+    query += ` ORDER BY p.publishedAt DESC LIMIT ?`;
+    binds.push(limit);
     
     const { results } = await db.prepare(query).bind(...binds).all();
     return results.map((p: any) => ({

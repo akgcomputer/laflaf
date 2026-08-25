@@ -4,9 +4,10 @@ import { getPosts, getProducts, getPages } from '../lib/db';
 export const GET: APIRoute = async ({ locals, url }) => {
   const dbBinding = locals.runtime?.env?.DB;
   
-  // Fetch dynamic entities from D1 / JSON fallback
-  const posts = await getPosts(dbBinding);
-  const products = await getProducts(dbBinding);
+  // Sitemap için sadece slug ve kategori bilgisi gerekli
+  // getPosts max 100 ile sınırlı, getProducts max 500 ile sınırlı
+  const posts = await getPosts(dbBinding, undefined, 1000);
+  const products = await getProducts(dbBinding, 1000);
   const pages = await getPages(dbBinding);
 
   const baseUrl = url.origin;

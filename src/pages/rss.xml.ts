@@ -4,8 +4,8 @@ import { getPosts } from '../lib/db';
 export const GET: APIRoute = async ({ locals, url }) => {
   const dbBinding = locals.runtime?.env?.DB;
   
-  // Fetch active posts from DB
-  const posts = await getPosts(dbBinding);
+  // Fetch active posts from DB — sadece son 20 yeterli, RSS için 100 çekmek gereksiz
+  const posts = await getPosts(dbBinding, undefined, 20);
   
   // Take latest 20 published posts
   const latestPosts = posts.slice(0, 20);
