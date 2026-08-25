@@ -1,6 +1,13 @@
 // src/lib/db.ts
 // Laflaf.net Dual-Mode Database Adapter (D1 + Persistent Local JSON Fallback)
 
+// --- SETTINGS IN-MEMORY CACHE ---
+// Her sayfa yüklemesinde DB'ye vurmayı önler. 23.595 sorgu/gün → ~100/gün
+let _settingsCache: any = null;
+let _settingsCacheTime = 0;
+const SETTINGS_CACHE_TTL = 5 * 60 * 1000; // 5 dakika (ms)
+
+
 export interface Post {
   id: number;
   title: string;
@@ -349,9 +356,26 @@ export async function deleteBrand(id: number, db?: any): Promise<boolean> {
 
 // --- PRODUCTS ---
 
-export async function getProducts(db?: any): Promise<Product[]> {
+export async function getProducts(
+  db?: any,
+  limit = 500,
+  offset = 0,
+  statusFilter?: string
+): Promise<Product[]> {
   if (db) {
-    const { results } = await db.prepare("SELECT * FROM products ORDER BY createdAt DESC").all();
+    let sql = `SELECT id, name, slug, price, compare_at_price, currency,
+                      image_url, status, stock, allow_backorder,
+                      category_id, brand_id, tags, seller_name, shipping_time,
+                      badge_top_left, badge_top_right, createdAt
+               FROM products`;
+    const params: any[] = [];
+    if (statusFilter) {
+      sql += ` WHERE status = ?`;
+      params.push(statusFilter);
+    }
+    sql += ` ORDER BY createdAt DESC LIMIT ? OFFSET ?`;
+    params.push(limit, offset);
+    const { results } = await db.prepare(sql).bind(...params).all();
     return results;
   }
   const local = await getLocalDb();
@@ -839,7 +863,7 @@ export async function getPosts(db?: any, authorId?: number): Promise<any[]> {
       query += ` AND p.author_id = ?`;
       binds.push(authorId);
     }
-    query += ` ORDER BY p.publishedAt DESC`;
+    query += ` ORDER BY p.publishedAt DESC LIMIT 100`;
     
     const { results } = await db.prepare(query).bind(...binds).all();
     return results.map((p: any) => ({
@@ -884,7 +908,7 @@ export async function getAllPosts(db?: any, authorId?: number): Promise<any[]> {
       query += ` WHERE p.author_id = ? `;
       binds.push(authorId);
     }
-    query += ` ORDER BY p.createdAt DESC`;
+    query += ` ORDER BY p.createdAt DESC LIMIT 500`;
     
     const { results } = await db.prepare(query).bind(...binds).all();
     return results.map((p: any) => ({
@@ -1148,7 +1172,13 @@ export async function likePost(id: number, db?: any): Promise<number> {
 
 export async function getComments(db?: any): Promise<Comment[]> {
   if (db) {
-    const { results } = await db.prepare("SELECT * FROM comments ORDER BY createdAt DESC").all();
+    // Admin paneli — son 500 yorum, sadece gerekli sütunlar
+    const { results } = await db.prepare(
+      `SELECT id, post_id, name, email, comment, status, createdAt
+       FROM comments
+       ORDER BY createdAt DESC
+       LIMIT 500`
+    ).all();
     return results;
   }
   const local = await getLocalDb();
@@ -1158,14 +1188,24 @@ export async function getComments(db?: any): Promise<Comment[]> {
   return [];
 }
 
-export async function getCommentsByPost(postId: number, db?: any): Promise<Comment[]> {
+export async function getCommentsByPost(postId: number, db?: any, limit = 50): Promise<Comment[]> {
   if (db) {
-    const { results } = await db.prepare("SELECT * FROM comments WHERE post_id = ? AND status = 'approved' ORDER BY createdAt DESC").bind(postId).all();
+    // Index: idx_comments_post_status(post_id, status) + sadece gerekli sütunlar
+    // 3.6M → ~4K satır okuma bekleniyor
+    const { results } = await db.prepare(
+      `SELECT id, post_id, name, email, comment, createdAt
+       FROM comments
+       WHERE post_id = ? AND status = 'approved'
+       ORDER BY createdAt DESC
+       LIMIT ?`
+    ).bind(postId, limit).all();
     return results;
   }
   const local = await getLocalDb();
   if (local) {
-    return (local.data.comments || []).filter((c: any) => c.post_id === postId && c.status === 'approved');
+    return (local.data.comments || [])
+      .filter((c: any) => c.post_id === postId && c.status === 'approved')
+      .slice(0, limit);
   }
   return [];
 }
@@ -1288,11 +1328,18 @@ export async function getDashboardStats(db?: any): Promise<any> {
 
 export async function getSettings(db?: any): Promise<any> {
   if (db) {
+    const now = Date.now();
+    // Cache geçerliyse DB'ye gitme — doğrudan dön
+    if (_settingsCache && (now - _settingsCacheTime) < SETTINGS_CACHE_TTL) {
+      return _settingsCache;
+    }
     const { results } = await db.prepare("SELECT * FROM settings").all();
     const settingsObj: any = {};
     results.forEach((row: any) => {
       settingsObj[row.key] = row.value;
     });
+    _settingsCache = settingsObj;
+    _settingsCacheTime = now;
     return settingsObj;
   }
   const local = await getLocalDb();
@@ -1307,6 +1354,9 @@ export async function updateSetting(key: string, value: string, db?: any): Promi
     const { success } = await db.prepare(
       "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = ?"
     ).bind(key, value, value).run();
+    // Cache'i temizle — bir sonraki getSettings DB'den taze veri alır
+    _settingsCache = null;
+    _settingsCacheTime = 0;
     return success;
   }
   const local = await getLocalDb();
