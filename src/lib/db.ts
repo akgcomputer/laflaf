@@ -389,8 +389,12 @@ export async function getProductById(id: number, db?: any): Promise<Product | nu
   if (db) {
     const result = await db.prepare("SELECT * FROM products WHERE id = ?").bind(id).first();
     if (result) {
-      const { results: variants } = await db.prepare("SELECT * FROM product_variants WHERE product_id = ? ORDER BY id ASC").bind(id).all();
-      const { results: wholesalePrices } = await db.prepare("SELECT * FROM wholesale_prices WHERE product_id = ? ORDER BY min_qty ASC").bind(id).all();
+      const { results: variants } = await db.prepare(
+        "SELECT id, product_id, name, sku, price, stock, image_url FROM product_variants WHERE product_id = ? ORDER BY id ASC LIMIT 50"
+      ).bind(id).all();
+      const { results: wholesalePrices } = await db.prepare(
+        "SELECT id, product_id, min_qty, discount_percentage FROM wholesale_prices WHERE product_id = ? ORDER BY min_qty ASC LIMIT 20"
+      ).bind(id).all();
       result.variants = variants;
       result.wholesalePrices = wholesalePrices;
     }
@@ -412,8 +416,12 @@ export async function getProductBySlug(slug: string, db?: any): Promise<Product 
   if (db) {
     const result = await db.prepare("SELECT * FROM products WHERE slug = ? AND status = 'aktif'").bind(slug).first();
     if (result) {
-      const { results: variants } = await db.prepare("SELECT * FROM product_variants WHERE product_id = ? ORDER BY id ASC").bind(result.id).all();
-      const { results: wholesalePrices } = await db.prepare("SELECT * FROM wholesale_prices WHERE product_id = ? ORDER BY min_qty ASC").bind(result.id).all();
+      const { results: variants } = await db.prepare(
+        "SELECT id, product_id, name, sku, price, stock, image_url FROM product_variants WHERE product_id = ? ORDER BY id ASC LIMIT 50"
+      ).bind(result.id).all();
+      const { results: wholesalePrices } = await db.prepare(
+        "SELECT id, product_id, min_qty, discount_percentage FROM wholesale_prices WHERE product_id = ? ORDER BY min_qty ASC LIMIT 20"
+      ).bind(result.id).all();
       result.variants = variants;
       result.wholesalePrices = wholesalePrices;
     }
@@ -645,7 +653,9 @@ export async function deleteProductVariant(id: number, db?: any): Promise<boolea
 
 export async function getProductVariants(productId: number, db?: any): Promise<ProductVariant[]> {
   if (db) {
-    const { results } = await db.prepare("SELECT * FROM product_variants WHERE product_id = ? ORDER BY id ASC").bind(productId).all();
+    const { results } = await db.prepare(
+      "SELECT id, product_id, name, sku, price, stock, image_url FROM product_variants WHERE product_id = ? ORDER BY id ASC LIMIT 50"
+    ).bind(productId).all();
     return results as ProductVariant[];
   }
   const local = await getLocalDb();
